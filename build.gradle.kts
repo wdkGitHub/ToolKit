@@ -73,7 +73,7 @@ intellijPlatform {
 dependencies {
     intellijPlatform {
         version = providers.gradleProperty("plugin.version").get()
-        intellijIdeaUltimate("2024.3.2")
+        intellijIdeaUltimate("2025.1.1.1")
 //        bundledPlugin("hg4idea")
         bundledPlugin("Git4Idea")
         ////        com.jetbrains.plugins.webDeployment.ui.config.DeploymentServersEditor

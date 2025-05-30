@@ -36,24 +36,28 @@
             <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="ExecutionTargetsToolbarGroup"/>
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
             <add-to-group group-id="ChangesViewPopupMenu"/>
+            <add-to-group group-id="Git.Stage.Tree.Menu"/>
         </action>
         <action id="blog.dekun.wang.ForkAppProject" class="blog.dekun.wang.command.hook.action.git.ForkAction" icon="Icons.FORK">
             <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.ITerm2"/>
             <add-to-group group-id="MainToolbarLeft"/>
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
             <add-to-group group-id="ChangesViewPopupMenu"/>
+            <add-to-group group-id="Git.Stage.Tree.Menu"/>
         </action>
         <action id="blog.dekun.wang.SourcetreeAppProject" class="blog.dekun.wang.command.hook.action.git.SourcetreeAction" icon="Icons.SOURCETREE">
             <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.ForkAppProject"/>
             <add-to-group group-id="MainToolbarLeft"/>
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
             <add-to-group group-id="ChangesViewPopupMenu"/>
+            <add-to-group group-id="Git.Stage.Tree.Menu"/>
         </action>
         <action id="blog.dekun.wang.GitOpenProject" class="blog.dekun.wang.command.hook.action.git.GitOpenAction" icon="AllIcons.Javaee.WebService">
             <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.SourcetreeAppProject"/>
             <add-to-group group-id="MainToolbarLeft"/>
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
             <add-to-group group-id="ChangesViewPopupMenu"/>
+            <add-to-group group-id="Git.Stage.Tree.Menu"/>
         </action>
 
         <group id="blog.dekun.wang.action.group" popup="true" icon="ExternalSystemIcons.Task">

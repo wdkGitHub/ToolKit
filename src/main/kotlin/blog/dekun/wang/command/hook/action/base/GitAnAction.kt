@@ -25,7 +25,7 @@ abstract class GitAnAction : WelcomeScreen, BaseAnAction() {
     fun setEnableVisible(event: AnActionEvent, checkRemote: Boolean = false) {
         super.enableVisible(event) {
             when (event.place) {
-                "Vcs.Push.ContextMenu" -> {
+                "Vcs.Push.ContextMenu", "ChangesViewPopup" -> {
                     return@enableVisible vcsPushContextMenuGitRepDir(event) != null
                 }
 
@@ -47,8 +47,9 @@ abstract class GitAnAction : WelcomeScreen, BaseAnAction() {
 
     fun executeGitCommand(event: AnActionEvent, commandType: CommandType) {
         val project = event.project ?: return
+        println(event.place)
         when (event.place) {
-            "Vcs.Push.ContextMenu" -> {
+            "Vcs.Push.ContextMenu", "ChangesViewPopup" -> {
                 vcsPushContextMenuGitRepDir(event)?.let {
                     Command.build().execute(it, commandType)
                 }
@@ -56,7 +57,9 @@ abstract class GitAnAction : WelcomeScreen, BaseAnAction() {
 
             else -> {
                 val repoManager = GitRepositoryManager.getInstance(project)
-                for (dir in getSelectedDirectories(event)) {
+                val selectedDirectories = getSelectedDirectories(event)
+                println("selectedDirectories: $selectedDirectories")
+                for (dir in selectedDirectories) {
                     repoManager.getRepositoryForFileQuick(dir)?.let {
                         Command.build().execute(dir.path, commandType)
                     }

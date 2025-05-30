@@ -42,7 +42,7 @@ class GlobalActionListener : AnActionListener {
             ActionManager.getInstance().getActionIdList("").forEach { id ->
                 ActionManager.getInstance().getAction(id)?.let { action ->
                     if (action is DefaultActionGroup) {
-                        action.getChildren(null).forEach {
+                        action.childActionsOrStubs.forEach {
                             it.templatePresentation.text?.let { text ->
                                 if (text == actionText) {
                                     mutableListOf.add(id)
