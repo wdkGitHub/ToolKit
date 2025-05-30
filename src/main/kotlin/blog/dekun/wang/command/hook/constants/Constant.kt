@@ -24,18 +24,10 @@ object Constant {
 
 
     //<editor-fold desc="持久化">
-    const val STATE_NAME = ACTION_GROUP_ID
-
-    const val STATE_NAME_TEMPLATE_PARAM = "$ACTION_GROUP_ID.params"
-
-    const val STATE_NAME_TEMPLATE_COMMAND = "$ACTION_GROUP_ID.commands"
-
-    const val WORKSPACE_CONFIG_XML_FILE_NAME = "wdk.workspace.xml"
 
     const val APP_CONFIG_XML_FILE_NAME = "wdk.app.xml"
     //</editor-fold>
 
-    const val NOTIFICATION_GROUP_ID = ACTION_GROUP_ID
 
     const val NOTIFICATION_GROUP_AN_ACTION_ID = "AnActionIdNotificationGroup"
 

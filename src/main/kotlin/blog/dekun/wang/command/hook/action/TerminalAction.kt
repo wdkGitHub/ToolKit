@@ -7,6 +7,7 @@ import blog.dekun.wang.command.hook.constants.CommandType
 import blog.dekun.wang.command.hook.constants.Constant
 import blog.dekun.wang.command.hook.utils.Utils
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 
 
 /**
@@ -42,6 +43,27 @@ class TerminalAction : BaseAnAction(), WelcomeScreen {
         }
     }
 
+    fun execute(event: AnActionEvent, commandType: CommandType, action: (CommandType) -> Unit) {
+        when (event.place) {
+            "Vcs.Push.ContextMenu" -> {
+                ApplicationManager.getApplication().executeOnPooledThread {
+                    vcsPushContextMenuGitRepDir(event)?.let { path ->
+                        Command.build().execute(path, commandType)
+                    }
+                }
+            }
+
+            Constant.WELCOME_SCREEN -> {
+                ApplicationManager.getApplication().executeOnPooledThread {
+                    Utils.getProjectPath(event)?.let {
+                        Command.build().execute(it, commandType)
+                    }
+                }
+            }
+
+            else -> action.invoke(commandType)
+        }
+    }
 }
 
 

@@ -1,6 +1,5 @@
 package blog.dekun.wang.command.hook.utils
 
-import blog.dekun.wang.command.hook.command.Command
 import blog.dekun.wang.command.hook.constants.Constant
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -50,56 +49,11 @@ class Utils {
             return !psiFile.isDirectory && psiFile.name.endsWith(".md")
         }
 
-//        fun getPsiFile(event: AnActionEvent): PsiFile? {
-//            return event.getData(PlatformDataKeys.PSI_FILE)
-//        }
-
 
         fun getVirtualFile(event: AnActionEvent): VirtualFile? {
             return event.getData(PlatformDataKeys.VIRTUAL_FILE)
         }
 
-        /**
-         * 获取git仓库根目录
-         */
-        fun getGitRepoRootPath(event: AnActionEvent): String? {
-            val virtualFile = event.getData(PlatformDataKeys.VIRTUAL_FILE) ?: return null
-            if (virtualFile.fileSystem.protocol != "file") {
-                println("Not a file system path: ${virtualFile.fileSystem.protocol} ${virtualFile.path}")
-                return null
-            }
-            val path: String = if (virtualFile.isDirectory) {
-                virtualFile.path
-            } else {
-                virtualFile.path.replace(virtualFile.name, "")
-            }
-            return Command.gitRevParseShowTopLevel(path)
-        }
-
-
-        /**
-         * 判断是否是git仓库
-         */
-        fun isGitRepo(gitRepoRootPath: String?): Boolean {
-            return gitRepoRootPath?.let { !it.contains("fatal") } ?: false
-        }
-
-
-        /**
-         * 判断git仓库是否关联远程仓库
-         */
-        fun hasGitRemote(gitRepoRootPath: String?): Boolean {
-            return gitRepoRootPath?.let {
-                val result = Command.gitRemote(gitRepoRootPath)
-                return result.trim().isNotEmpty() && !result.contains("fatal")
-            } ?: false
-        }
-
-
-        fun showNotification(project: Project, title: String, content: String, type: NotificationType) {
-            NotificationGroupManager.getInstance().getNotificationGroup(Constant.NOTIFICATION_GROUP_ID)
-                .createNotification(title, content, type).notify(project)
-        }
 
         fun showNotificationAnActionId(project: Project, title: String, content: String) {
             NotificationGroupManager.getInstance().getNotificationGroup(Constant.NOTIFICATION_GROUP_AN_ACTION_ID)

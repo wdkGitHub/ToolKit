@@ -1,6 +1,5 @@
 package blog.dekun.wang.command.hook.services
 
-import blog.dekun.wang.command.hook.action.CustomCommandAction
 import blog.dekun.wang.command.hook.constants.Constant
 import com.intellij.ide.projectView.impl.ProjectViewState
 import com.intellij.openapi.application.ApplicationManager
@@ -20,10 +19,6 @@ import com.intellij.openapi.updateSettings.impl.UpdateSettings
 class ServiceUtils {
 
     companion object {
-
-        fun initCommandAction(project: Project?) {
-            CustomCommandAction.modifyAction(configsToAdd = ActionConfigService.getConfigs(project))
-        }
 
         /**
          *  行为: 一键打开文件

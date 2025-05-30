@@ -6,7 +6,6 @@
 
     <!-- Extension points defined by the plugin. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <notificationGroup id="blog.dekun.wang.action.group" displayType="BALLOON"/>
         <notificationGroup id="AnActionIdNotificationGroup" displayType="BALLOON"/>
 
         <postStartupActivity implementation="blog.dekun.wang.command.hook.startup.Startup"/>
@@ -61,9 +60,6 @@
             <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="ExecutionTargetsToolbarGroup"/>
             <action id="blog.dekun.wang.command.hook.action.ListenerAction" class="blog.dekun.wang.command.hook.action.ListenerAction"/>
             <action id="blog.dekun.wang.command.hook.action.UnregisterAction" class="blog.dekun.wang.command.hook.action.UnregisterAction" icon="ExternalSystemIcons.Task"/>
-            <separator/>
-            <action id="blog.dekun.wang.command.hook.action.ConfigUiAction" class="blog.dekun.wang.command.hook.action.ConfigUiAction" icon="ExternalSystemIcons.Task"/>
-            <separator/>
         </group>
     </actions>
 </idea-plugin>

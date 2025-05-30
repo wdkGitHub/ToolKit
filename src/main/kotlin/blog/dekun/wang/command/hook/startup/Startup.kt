@@ -19,7 +19,6 @@ class Startup : ProjectActivity {
 
     override suspend fun execute(project: Project) {
         ServiceUtils.setOneClickOpenFile(project)
-        ServiceUtils.initCommandAction(project)
         UnregisterActionService.unregister()
 
     }
