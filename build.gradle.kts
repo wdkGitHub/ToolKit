@@ -9,11 +9,11 @@ import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 plugins {
 //    id("org.jetbrains.intellij.platform.settings") version "2.2.0"
 //    id("org.jetbrains.intellij.platform.module") version "2.2.0"
-    id("org.jetbrains.intellij.platform") version "2.2.1"
+    id("org.jetbrains.intellij.platform") version "2.20.0"
     id("org.jetbrains.kotlin.jvm") version "2.1.0"
     id("java")
 }
-group = "blog.dekun.wang"
+group = "wnag.dekun"
 
 repositories {
     intellijPlatform {
@@ -43,9 +43,7 @@ tasks {
     runIde {
         jvmArgumentProviders += CommandLineArgumentProvider {
             listOf(
-                "--add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED",
-                "--add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED",
-                "-javaagent:${homeDir}/Software-config/ja-netfilter-all/jetbra/ja-netfilter.jar=jetbrains"
+                "-javaagent:${homeDir}/Home/app/IntelliJ/intellij.jar"
             )
         }
     }
@@ -73,7 +71,7 @@ intellijPlatform {
 dependencies {
     intellijPlatform {
         version = providers.gradleProperty("plugin.version").get()
-        intellijIdeaUltimate("2025.1.1.1")
+        intellijIdeaUltimate("2026.3")
 //        bundledPlugin("hg4idea")
         bundledPlugin("Git4Idea")
         ////        com.jetbrains.plugins.webDeployment.ui.config.DeploymentServersEditor
@@ -94,6 +92,7 @@ dependencies {
 
     }
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.25")
+    implementation("org.zeroturnaround:zt-exec:1.12")
 }
 
 
