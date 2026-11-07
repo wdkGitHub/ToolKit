@@ -31,5 +31,5 @@ object Constant {
 
     const val NOTIFICATION_GROUP_AN_ACTION_ID = "AnActionIdNotificationGroup"
 
-    const val PLUGIN_HOSTS = "https://raw.githubusercontent.com/wdkGitHub/CommandHook/refs/heads/master/updatePlugins.xml"
+    const val PLUGIN_HOSTS = "https://raw.githubusercontent.com/wdkGitHub/ToolKit/refs/heads/master/updatePlugins.xml"
 }

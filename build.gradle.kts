@@ -7,13 +7,11 @@ import org.jdom2.output.XMLOutputter
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 
 plugins {
-//    id("org.jetbrains.intellij.platform.settings") version "2.2.0"
-//    id("org.jetbrains.intellij.platform.module") version "2.2.0"
     id("org.jetbrains.intellij.platform") version "2.20.0"
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.21"
     id("java")
 }
-group = "wnag.dekun"
+group = "wang.dekun"
 
 repositories {
     intellijPlatform {
@@ -21,9 +19,6 @@ repositories {
     }
     mavenCentral()
 }
-//tasks.withType(Jar) {
-//    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-//}
 tasks.withType(Jar::class) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
@@ -38,13 +33,11 @@ kotlin {
         languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
+// 个人机器的 javaagent 不写进仓库：需要时在本机 ~/.gradle/gradle.properties 配置 runIde.javaAgent
 tasks {
-    val homeDir = System.getenv("HOME")
     runIde {
-        jvmArgumentProviders += CommandLineArgumentProvider {
-            listOf(
-                "-javaagent:${homeDir}/Home/app/IntelliJ/intellij.jar"
-            )
+        providers.gradleProperty("runIde.javaAgent").orNull?.let { agent ->
+            jvmArgumentProviders += CommandLineArgumentProvider { listOf("-javaagent:$agent") }
         }
     }
 }
@@ -70,29 +63,10 @@ intellijPlatform {
 // 自定义插件仓库文档
 dependencies {
     intellijPlatform {
-        version = providers.gradleProperty("plugin.version").get()
         intellijIdeaUltimate("2026.3")
-//        bundledPlugin("hg4idea")
         bundledPlugin("Git4Idea")
-        ////        com.jetbrains.plugins.webDeployment.ui.config.DeploymentServersEditor
-        //        com.jetbrains.plugins.webDeployment.actions.ConfigureDeploymentAction"
-        //ID = WebDeployment.Configuration Name = 配置… GroupId = [PublishGroup] Class = com.jetbrains.plugins.webDeployment.actions.ConfigureDeploymentAction
-//        intellijIdeaCommunity("2024.3.1")
-//        bundledPlugin("com.jetbrains.plugins.webDeployment")
-//        bundledPlugin("Git4Idea")
-//        bundledPlugin("org.jetbrains.idea.maven")
-//        bundledPlugin("org.jetbrains.idea.maven.ext")
-//        bundledPlugin("org.jetbrains.idea.maven.model")
-//        bundledPlugin("org.jetbrains.idea.maven.server.api")
-//        bundledPlugin("com.intellij")
-//        bundledPlugin("com.intellij.java")
-
-//        bundledPlugin("org.jetbrains.plugins.gradle")
-//        bundledPlugin("org.jetbrains.idea.maven")
-
     }
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.25")
-    implementation("org.zeroturnaround:zt-exec:1.12")
+    // kotlin-stdlib / kotlinx-coroutines 由目标 IDE 提供，不随插件打包
 }
 
 
