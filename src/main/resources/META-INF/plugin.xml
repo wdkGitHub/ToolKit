@@ -2,6 +2,8 @@
 <idea-plugin>
     <!-- Product and plugin compatibility requirements. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
+    <!-- 变更/提交窗口、Git Log 的上下文解析依赖 VCS API（VcsDataKeys / VcsLogDataKeys） -->
+    <depends>com.intellij.modules.vcs</depends>
     <depends>Git4Idea</depends>
 
     <!-- Extension points defined by the plugin. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
@@ -9,55 +11,74 @@
         <notificationGroup id="AnActionIdNotificationGroup" displayType="BALLOON"/>
 
         <postStartupActivity implementation="wang.dekun.tool.kit.startup.Startup"/>
+
+        <!-- 设置 → 工具 → 外部应用打开方式：配置“后缀 → 外置应用” -->
+        <applicationConfigurable id="wang.dekun.tool.kit.externalApp" displayName="WK配置" parentId="tools" instance="wang.dekun.tool.kit.ui.ExternalAppConfigurable"/>
     </extensions>
     <applicationListeners>
         <listener class="wang.dekun.tool.kit.listener.GlobalActionListener" topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
     </applicationListeners>
     <actions>
-        <!--<editor-fold desc="最近项目">-->
+        <!-- 欢迎界面 -->
         <action id="blog.dekun.wang.terminal" class="wang.dekun.tool.kit.action.TerminalAction" icon="Icons.TERMINAL_ICON">
             <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="WelcomeScreen.RevealIn"/>
         </action>
-        <action id="blog.dekun.wang.git.open" class="wang.dekun.tool.kit.action.git.GitOpenAction" icon="AllIcons.Javaee.WebService">
-            <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="blog.dekun.wang.terminal"/>
-        </action>
         <action id="blog.dekun.wang.fork" class="wang.dekun.tool.kit.action.git.ForkAction" icon="Icons.FORK">
-            <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="blog.dekun.wang.git.open"/>
+            <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="blog.dekun.wang.terminal"/>
         </action>
         <action id="blog.dekun.wang.sourcetree" class="wang.dekun.tool.kit.action.git.SourcetreeAction" icon="Icons.SOURCETREE">
             <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="blog.dekun.wang.fork"/>
         </action>
-        <!--</editor-fold>-->
-        <action id="blog.dekun.wang.Typora" class="wang.dekun.tool.kit.action.TyporaAction" icon="Icons.TYPORA">
-            <add-to-group group-id="RunContextPopupGroup" anchor="before" relative-to-action="OpenInBrowserGroup"/>
+        <action id="blog.dekun.wang.git.open" class="wang.dekun.tool.kit.action.git.GitOpenAction" icon="AllIcons.General.Web">
+            <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="blog.dekun.wang.sourcetree"/>
         </action>
+        <!--<editor-fold desc="Open With <配置的应用>（后缀映射见 设置 → 工具 → 外部应用打开方式）">-->
+        <action id="blog.dekun.wang.OpenWithApp" class="wang.dekun.tool.kit.action.OpenWithConfiguredAppAction" icon="AllIcons.Actions.MenuOpen">
+            <add-to-group group-id="RunContextPopupGroup"/>
+        </action>
+        <!--</editor-fold>-->
         <action id="blog.dekun.wang.ITerm2" class="wang.dekun.tool.kit.action.TerminalAction" icon="Icons.TERMINAL_ICON">
-            <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.Typora"/>
-            <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="ExecutionTargetsToolbarGroup"/>
+            <!--            <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="ExecutionTargetsToolbarGroup"/>-->
+            <!--            工具栏-->
+            <add-to-group group-id="MainToolbarLeft"/>
+            <!--            git日志commit点-->
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
-<!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
-            <!--            <add-to-group group-id="Git.Stage.Tree.Menu"/>-->
+            <!--            git 更改-->
+            <!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
+            <!--            git 提交-->
+            <add-to-group group-id="Unversioned.Files.Dialog.Popup"/>
+            <!--            项目右键-->
+            <add-to-group group-id="RunContextPopupGroup"/>
+            <!--            <add-to-group group-id="ChangesViewToolbar"/>-->
         </action>
         <action id="blog.dekun.wang.ForkAppProject" class="wang.dekun.tool.kit.action.git.ForkAction" icon="Icons.FORK">
-            <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.ITerm2"/>
             <add-to-group group-id="MainToolbarLeft"/>
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
-<!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
-            <!--            <add-to-group group-id="Git.Stage.Tree.Menu"/>-->
+            <!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
+            <add-to-group group-id="Unversioned.Files.Dialog.Popup"/>
+            <add-to-group group-id="RunContextPopupGroup"/>
+            <!--            <add-to-group group-id="ChangesViewToolbar"/>-->
         </action>
         <action id="blog.dekun.wang.SourcetreeAppProject" class="wang.dekun.tool.kit.action.git.SourcetreeAction" icon="Icons.SOURCETREE">
-            <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.ForkAppProject"/>
             <add-to-group group-id="MainToolbarLeft"/>
-            <add-to-group group-id="Vcs.Log.ContextMenu"/>
-<!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
-            <!--            <add-to-group group-id="Git.Stage.Tree.Menu"/> -->
+            <!--            <add-to-group group-id="Vcs.Log.ContextMenu"/>-->
+            <!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
+            <add-to-group group-id="Unversioned.Files.Dialog.Popup"/>
+            <add-to-group group-id="RunContextPopupGroup"/>
+            <!--            <add-to-group group-id="ChangesViewToolbar"/>-->
         </action>
-        <action id="blog.dekun.wang.GitOpenProject" class="wang.dekun.tool.kit.action.git.GitOpenAction" icon="AllIcons.Javaee.WebService">
-            <add-to-group group-id="RunContextPopupGroup" anchor="after" relative-to-action="blog.dekun.wang.SourcetreeAppProject"/>
+        <action id="blog.dekun.wang.GitOpenProject" class="wang.dekun.tool.kit.action.git.GitOpenAction" icon="AllIcons.General.Web">
             <add-to-group group-id="MainToolbarLeft"/>
             <add-to-group group-id="Vcs.Log.ContextMenu"/>
-<!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
-            <!--            <add-to-group group-id="Git.Stage.Tree.Menu"/>-->
+            <!--            <add-to-group group-id="ChangesViewPopupMenu"/>-->
+            <add-to-group group-id="Unversioned.Files.Dialog.Popup"/>
+            <add-to-group group-id="RunContextPopupGroup"/>
+            <!--            <add-to-group group-id="ChangesViewToolbar"/>-->
+
+        </action>
+        <action id="blog.dekun.wang.finder" class="wang.dekun.tool.kit.action.FinderAction" icon="AllIcons.Nodes.Folder">
+            <add-to-group group-id="MainToolbarLeft"/>
+            <!--            <add-to-group group-id="ChangesViewToolbar"/>-->
         </action>
 
         <group id="blog.dekun.wang.action.group" popup="true" icon="ExternalSystemIcons.Task">
