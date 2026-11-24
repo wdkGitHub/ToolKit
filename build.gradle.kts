@@ -41,6 +41,15 @@ tasks {
             jvmArgumentProviders += CommandLineArgumentProvider { listOf("-javaagent:${homeDir}$agent") }
         }
     }
+
+    // IntelliJ Platform Gradle Plugin 2.x 的 buildPlugin 只把 archiveBaseName 设为插件名，
+    // 归档版本沿用 Gradle 的 project.version；本项目未设置 project.version（默认 unspecified），
+    // 因此默认产物是 ToolKit.zip（无版本号）。
+    // 这里显式把归档版本绑定到 plugin.version，产物形如 ToolKit-2.0.0.zip，
+    // 与 release 附件名、download-url 末段、updatePlugins.xml 保持一致。
+    named<Zip>("buildPlugin") {
+        archiveVersion.set(providers.gradleProperty("plugin.version"))
+    }
 }
 intellijPlatform {
     pluginConfiguration {

@@ -1,4 +1,6 @@
 name: "打包发布版本"
+
+# 触发条件保持不变：master 上 gradle.properties 变更时推送，或手动触发
 on:
     push:
         branches:
@@ -9,6 +11,7 @@ on:
 
 permissions:
     contents: write
+
 env:
     BRANCH_NAME: master
 
@@ -17,105 +20,183 @@ jobs:
         runs-on: ubuntu-latest
         env:
             GIT_USER_NAME: "wdk"
+            # 将 GitHub 上下文值通过 env 注入，避免在 shell 中直接插值 ${{ }}（防注入）
+            EVENT_NAME: ${{ github.event_name }}
+            EVENT_BEFORE: ${{ github.event.before }}
+            REPOSITORY: ${{ github.repository }}
         steps:
+            # 检出完整历史并拉取 tag：既支持 before..HEAD 区间比较，也支持后续 tag 清理
             -   name: "检出仓库代码"
-                uses: actions/checkout@v5
+                uses: actions/checkout@v7
                 with:
                     ref: ${{ env.BRANCH_NAME }}
                     fetch-depth: 0
-                    fetch-tags: false
+                    fetch-tags: true
 
-            -   name: "检测是否手动触发或版本变更"
-                id: check-trigger
+            # 统一解析：判断触发条件 + 一次性解析所有元数据，通过 outputs 供后续步骤使用
+            -   name: "解析版本与元数据"
+                id: resolve
+                shell: bash
                 run: |
-                    set -e
-                    if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-                        echo "MANUAL_TRIGGER=true" >> $GITHUB_ENV
-                        echo "PLUGIN_VERSION_CHANGED=true" >> $GITHUB_ENV
-                    elif git diff HEAD~1 HEAD -- gradle.properties | grep "^+plugin.version="; then
-                        echo "PLUGIN_VERSION_CHANGED=true" >> $GITHUB_ENV
-                        NEW_VERSION=$(git diff HEAD~1 HEAD -- gradle.properties | grep "^+plugin.version=" | cut -d= -f2 | tr -d ' \r\n')
-                        echo "NEW_PLUGIN_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+                    set -euo pipefail
+
+                    # 从 gradle.properties 精确读取指定键的值，并去掉首尾空白与 \r
+                    read_prop() {
+                        awk -F= -v key="$1" '
+                            $1 == key {
+                                value = substr($0, index($0, "=") + 1)
+                                gsub(/^[ \t]+|[ \t\r]+$/, "", value)
+                                print value
+                                exit
+                            }
+                        ' gradle.properties
+                    }
+
+                    PLUGIN_NAME="$(read_prop plugin.name)"
+                    PLUGIN_VERSION="$(read_prop plugin.version)"
+                    VENDOR_EMAIL="$(read_prop plugin.vendor.email)"
+
+                    # 判定是否需要发布：
+                    # - 手动触发：始终发布
+                    # - push 触发：比较 github.event.before..HEAD 区间，覆盖一次推送含多个 commit 的情况
+                    VERSION_DIFF="$(git diff "${EVENT_BEFORE}" HEAD -- gradle.properties || true)"
+                    if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+                        VERSION_CHANGED="true"
+                    elif [[ "${VERSION_DIFF}" == *"+plugin.version="* ]]; then
+                        VERSION_CHANGED="true"
                     else
-                        echo "PLUGIN_VERSION_CHANGED=false" >> $GITHUB_ENV
+                        VERSION_CHANGED="false"
                     fi
 
+                    # 手动与 push 两种触发下，待发布版本均取当前 gradle.properties 中的版本，
+                    # 保证 tag / 下载地址 / release 使用同一个值，避免多处解析产生偏差
+                    RELEASE_VERSION="${PLUGIN_VERSION}"
+
+                    # 下载地址由 tag + 文件名确定，与 updatePlugins.xml 的 <download-url> 共用同一个计算值，避免漂移
+                    DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/download/v${RELEASE_VERSION}/${PLUGIN_NAME}-${RELEASE_VERSION}.zip"
+
+                    {
+                        echo "version-changed=${VERSION_CHANGED}"
+                        echo "release-version=${RELEASE_VERSION}"
+                        echo "plugin-name=${PLUGIN_NAME}"
+                        echo "vendor-email=${VENDOR_EMAIL}"
+                        echo "download-url=${DOWNLOAD_URL}"
+                    } >> "${GITHUB_OUTPUT}"
+
+                    echo "触发类型=${EVENT_NAME}, 需要发布=${VERSION_CHANGED}, 目标版本=${RELEASE_VERSION}"
+
             -   name: "设置 JDK21"
-                uses: actions/setup-java@v5
+                uses: actions/setup-java@v6
                 with:
                     distribution: 'temurin'
                     java-version: '21'
                     cache: 'gradle'
 
             -   name: "缓存 Gradle 依赖"
-                uses: actions/cache@v5
+                uses: actions/cache@v6
                 with:
                     path: ~/.gradle/caches
                     key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
                     restore-keys: |
                         ${{ runner.os }}-gradle-
 
-            -   name: "解析环境变量"
-                id: set-env-vars
-                run: |
-                    set -e
-                    export PLUGIN_NAME=$(awk -F= '/plugin.name/{print $2}' gradle.properties | tr -d ' \r\n')
-                    export PLUGIN_VERSION=$(awk -F= '/plugin.version/{print $2}' gradle.properties | tr -d ' \r\n')
-                    export PLUGIN_VENDOR_EMAIL=$(awk -F= '/plugin.vendor.email/{print $2}' gradle.properties | tr -d ' \r\n')
-                    echo "PLUGIN_NAME=${PLUGIN_NAME}" >> $GITHUB_ENV
-                    echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
-                    echo "PLUGIN_VENDOR_EMAIL=${PLUGIN_VENDOR_EMAIL}" >> $GITHUB_ENV
-                    # 在手动触发时，设置 NEW_PLUGIN_VERSION 等于当前版本
-                    if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-                        echo "NEW_PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
-                    fi
+            # 清理可能冲突的正式版 tag，以及历史遗留的 SNAPSHOT 预览 tag
             -   name: "清理 Git Tag"
-                if: env.PLUGIN_VERSION_CHANGED == 'true'
+                if: steps.resolve.outputs.version-changed == 'true'
+                env:
+                    RELEASE_VERSION: ${{ steps.resolve.outputs.release-version }}
                 run: |
-                    set -e
-                    git fetch --tags
-                    if git tag | grep -q "v${{ env.NEW_PLUGIN_VERSION }}"; then
-                        echo "标签 v${{ env.NEW_PLUGIN_VERSION }} 已存在，本地删除..."
-                        git tag -d "v${{ env.NEW_PLUGIN_VERSION }}"
-                        git push origin --delete "v${{ env.NEW_PLUGIN_VERSION }}"
+                    set -euo pipefail
+
+                    # 目标 tag 已存在则先删（本地 + 远端），确保 release-action 能重新创建
+                    TARGET_TAG="v${RELEASE_VERSION}"
+                    if [[ -n "$(git tag --list "${TARGET_TAG}")" ]]; then
+                        echo "标签 ${TARGET_TAG} 已存在，删除后重建..."
+                        git tag -d "${TARGET_TAG}"
+                        git push origin --delete "${TARGET_TAG}" || echo "远端无 ${TARGET_TAG}，跳过"
                     fi
-                    git tag | grep 'SNAPSHOT' | while read tag; do
-                      echo "发现 SNAPSHOT 标签: $tag，正在删除..."
-                      git tag -d "$tag"
-                      git push origin --delete "$tag"
-                    done
+
+                    # 保留原有行为：删除所有含 SNAPSHOT 的历史预览标签，避免与正式发布标签混淆
+                    SNAPSHOT_TAGS="$(git tag --list '*SNAPSHOT*')"
+                    if [[ -n "${SNAPSHOT_TAGS}" ]]; then
+                        while IFS= read -r tag; do
+                            [[ -z "${tag}" ]] && continue
+                            echo "发现 SNAPSHOT 标签: ${tag}，正在删除..."
+                            git tag -d "${tag}"
+                            git push origin --delete "${tag}" || echo "远端无 ${tag}，跳过"
+                        done <<< "${SNAPSHOT_TAGS}"
+                    fi
+
             -   name: "构建插件"
-                if: env.PLUGIN_VERSION_CHANGED == 'true'
+                if: steps.resolve.outputs.version-changed == 'true'
+                env:
+                    PLUGIN_NAME: ${{ steps.resolve.outputs.plugin-name }}
+                    RELEASE_VERSION: ${{ steps.resolve.outputs.release-version }}
                 run: |
-                    set -e
+                    set -euo pipefail
                     git log --oneline -5
                     git symbolic-ref --short HEAD
-                    ./gradlew buildPlugin --info --stacktrace
-            -   name: "版本变更"
-                if: env.PLUGIN_VERSION_CHANGED == 'true'
-                run: |
-                    set -e
-                    ./gradlew updatePluginXml  \
-                        -Purl=https://github.com/${{ github.repository }}/releases/download/v${{ env.NEW_PLUGIN_VERSION }}/${{ env.PLUGIN_NAME }}-${{ env.NEW_PLUGIN_VERSION }}.zip
 
+                    # buildPlugin 已在 build.gradle.kts 中把归档版本绑定为 plugin.version，
+                    # 产物形如 ToolKit-2.0.0.zip，与 download-url / artifacts 严格一致。
+                    ./gradlew buildPlugin --info --stacktrace
+
+                    # 断言产物确实存在，避免 artifacts glob 匹配不到时 release-action 静默跳过上传
+                    EXPECTED_ZIP="build/distributions/${PLUGIN_NAME}-${RELEASE_VERSION}.zip"
+                    if [[ ! -f "${EXPECTED_ZIP}" ]]; then
+                        echo "构建产物缺失：${EXPECTED_ZIP}"
+                        echo "build/distributions 实际内容："
+                        ls -1 build/distributions/ 2>/dev/null || echo "（目录为空或不存在）"
+                        exit 1
+                    fi
+                    echo "构建产物已确认：${EXPECTED_ZIP}"
+
+            # 将本次 release 的真实下载地址写回 updatePlugins.xml
+            -   name: "版本变更"
+                if: steps.resolve.outputs.version-changed == 'true'
+                env:
+                    DOWNLOAD_URL: ${{ steps.resolve.outputs.download-url }}
+                run: |
+                    set -euo pipefail
+                    echo "插件下载地址: ${DOWNLOAD_URL}"
+                    ./gradlew updatePluginXml -Purl="${DOWNLOAD_URL}"
+
+            # 只提交 release 元数据文件，避免 git add . 误提交构建产物等非预期文件
             -   name: "提交版本变更"
-                if: env.PLUGIN_VERSION_CHANGED == 'true'
+                if: steps.resolve.outputs.version-changed == 'true'
+                env:
+                    RELEASE_VERSION: ${{ steps.resolve.outputs.release-version }}
+                    VENDOR_EMAIL: ${{ steps.resolve.outputs.vendor-email }}
                 run: |
-                    set -e
-                    git config --global user.name "${{ env.GIT_USER_NAME }}"
-                    git config --global user.email "${{ env.PLUGIN_VENDOR_EMAIL }}"
-                    git diff --quiet || (git add . && git commit -m "发布版本 ${{ env.NEW_PLUGIN_VERSION }}")
+                    set -euo pipefail
+                    git config user.name "${GIT_USER_NAME}"
+                    git config user.email "${VENDOR_EMAIL}"
+
+                    git add -- updatePlugins.xml
+                    if ! git diff --cached --quiet; then
+                        git commit -m "发布版本 ${RELEASE_VERSION}"
+                    else
+                        echo "updatePlugins.xml 无变更，跳过提交"
+                    fi
+
             -   name: "发布版本"
-                if: env.PLUGIN_VERSION_CHANGED == 'true'
-                uses: ncipollo/release-action@v1
+                if: steps.resolve.outputs.version-changed == 'true'
+                uses: ncipollo/release-action@v1.21.0
                 with:
-                    tag: "v${{ env.NEW_PLUGIN_VERSION }}"
-                    name: "v${{ env.NEW_PLUGIN_VERSION }}"
-                    body: "发布版本 ${{ env.NEW_PLUGIN_VERSION }}"
-                    artifacts: build/distributions/${{ env.PLUGIN_NAME }}-${{ env.NEW_PLUGIN_VERSION }}.zip
-                    prerelease: ${{ contains(env.NEW_PLUGIN_VERSION, 'SNAPSHOT') }}
+                    tag: "v${{ steps.resolve.outputs.release-version }}"
+                    name: "v${{ steps.resolve.outputs.release-version }}"
+                    body: |
+                        发布版本 ${{ steps.resolve.outputs.release-version }}
+
+                        **下载插件包**：[${{ steps.resolve.outputs.plugin-name }}-${{ steps.resolve.outputs.release-version }}.zip](${{ steps.resolve.outputs.download-url }})
+                    artifacts: build/distributions/${{ steps.resolve.outputs.plugin-name }}-${{ steps.resolve.outputs.release-version }}.zip
+                    # 上传/匹配出错即让 workflow 失败（注意：抛错发生在 release 创建之后，
+                    # 防止空壳 release 主要靠构建步骤的 test -f 断言）
+                    artifactErrorsFailBuild: true
+                    prerelease: ${{ contains(steps.resolve.outputs.release-version, 'SNAPSHOT') }}
+
             -   name: "推送最终结果"
-                if: env.PLUGIN_VERSION_CHANGED == 'true'
+                if: steps.resolve.outputs.version-changed == 'true'
                 run: |
-                    set -e
-                    git push origin ${{ env.BRANCH_NAME }} || echo "没有需要推送的信息"
+                    set -euo pipefail
+                    git push origin "${BRANCH_NAME}" || echo "没有需要推送的信息"
