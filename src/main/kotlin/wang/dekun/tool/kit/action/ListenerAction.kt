@@ -15,7 +15,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
  */
 
 
-class ListenerAction : wang.dekun.tool.kit.action.base.BaseAnAction() {
+class ListenerAction : BaseAnAction() {
 
     override fun update(event: AnActionEvent) {
         event.presentation.text = "监控AnAction"

@@ -36,8 +36,9 @@ kotlin {
 // 个人机器的 javaagent 不写进仓库：需要时在本机 ~/.gradle/gradle.properties 配置 runIde.javaAgent
 tasks {
     runIde {
+        val homeDir = System.getenv("HOME")
         providers.gradleProperty("runIde.javaAgent").orNull?.let { agent ->
-            jvmArgumentProviders += CommandLineArgumentProvider { listOf("-javaagent:$agent") }
+            jvmArgumentProviders += CommandLineArgumentProvider { listOf("-javaagent:${homeDir}$agent") }
         }
     }
 }

@@ -14,9 +14,6 @@ object Icons {
     val TERMINAL_ICON: Icon = getIcon("/icons/terminal.png", Icons::class.java)
 
     @JvmField
-    val TYPORA: Icon = getIcon("/icons/typora.svg", Icons::class.java)
-
-    @JvmField
     val FORK: Icon = getIcon("/icons/fork.svg", Icons::class.java)
 
     @JvmField
