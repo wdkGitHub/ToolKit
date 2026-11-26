@@ -83,10 +83,10 @@
             <!--            <add-to-group group-id="ChangesViewToolbar"/>-->
         </action>
 
-        <group id="blog.dekun.wang.action.group" popup="true" icon="ExternalSystemIcons.Task">
+        <group id="blog.dekun.wang.action.group" popup="true" icon="Icons.TOOLKIT">
             <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="ExecutionTargetsToolbarGroup"/>
             <action id="wang.dekun.tool.kit.action.ListenerAction" class="wang.dekun.tool.kit.action.ListenerAction"/>
-            <action id="wang.dekun.tool.kit.action.UnregisterAction" class="wang.dekun.tool.kit.action.UnregisterAction" icon="ExternalSystemIcons.Task"/>
+            <action id="wang.dekun.tool.kit.action.UnregisterAction" class="wang.dekun.tool.kit.action.UnregisterAction"/>
         </group>
     </actions>
 </idea-plugin>

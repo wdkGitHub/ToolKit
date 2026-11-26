@@ -25,9 +25,3 @@
 ./gradlew buildPlugin                 # 产物在 build/distributions/
 ./gradlew updatePluginXml -Purl=<zip 下载地址>
 ```
-
-版本号、插件 ID、厂商信息等统一维护在 `gradle.properties`；推送 `master` 且版本号变更时，
-GitHub Actions 会自动构建、更新 `updatePlugins.xml` 并创建 Release。
-
-本地调试如需要注入 javaagent，在本机 `~/.gradle/gradle.properties` 配置 `runIde.javaAgent=<绝对路径>`，
-不要写进仓库。

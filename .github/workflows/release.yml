@@ -53,16 +53,28 @@ jobs:
                     PLUGIN_VERSION="$(read_prop plugin.version)"
                     VENDOR_EMAIL="$(read_prop plugin.vendor.email)"
 
-                    # 判定是否需要发布：
-                    # - 手动触发：始终发布
-                    # - push 触发：比较 github.event.before..HEAD 区间，覆盖一次推送含多个 commit 的情况
-                    VERSION_DIFF="$(git diff "${EVENT_BEFORE}" HEAD -- gradle.properties || true)"
-                    if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-                        VERSION_CHANGED="true"
-                    elif [[ "${VERSION_DIFF}" == *"+plugin.version="* ]]; then
-                        VERSION_CHANGED="true"
+                    # 版本变更仅作诊断，不再作为发布开关：
+                    # 新规要求 workflow 一旦触发就必须完整走完发布链路，版本相同则覆盖已有 Release / asset。
+                    # 因此 before 为空/全 0/被 amend 或 force push 改写而不可达、diff 失败等情况
+                    # 都不再导致跳过，只记录到日志便于下次定位 push 事件语义。
+                    VERSION_DIFF=""
+                    if [[ -z "${EVENT_BEFORE}" || "${EVENT_BEFORE}" == "0000000000000000000000000000000000000000" ]]; then
+                        echo "诊断：EVENT_BEFORE 为空或全 0，无法做区间比较（不影响本次发布）"
+                    elif ! VERSION_DIFF="$(git diff "${EVENT_BEFORE}" HEAD -- gradle.properties 2>/dev/null)"; then
+                        echo "诊断：before=${EVENT_BEFORE} 不在本地对象库（可能已被 amend/force push 改写），区间比较失败（不影响本次发布）"
+                        VERSION_DIFF=""
+                    fi
+
+                    if [[ -n "${VERSION_DIFF}" ]]; then
+                        echo "诊断：before..HEAD 的 gradle.properties 差异："
+                        echo "${VERSION_DIFF}"
+                        if [[ "${VERSION_DIFF}" == *"+plugin.version="* ]]; then
+                            echo "诊断：区间内检测到 plugin.version 变更（仅记录，不控制发布）"
+                        else
+                            echo "诊断：区间内未检测到 plugin.version 变更（仅记录，不控制发布）"
+                        fi
                     else
-                        VERSION_CHANGED="false"
+                        echo "诊断：before..HEAD 无 gradle.properties 差异或不可比较（仅记录，不控制发布）"
                     fi
 
                     # 手动与 push 两种触发下，待发布版本均取当前 gradle.properties 中的版本，
@@ -73,19 +85,17 @@ jobs:
                     DOWNLOAD_URL="https://github.com/${REPOSITORY}/releases/download/v${RELEASE_VERSION}/${PLUGIN_NAME}-${RELEASE_VERSION}.zip"
 
                     {
-                        echo "version-changed=${VERSION_CHANGED}"
                         echo "release-version=${RELEASE_VERSION}"
                         echo "plugin-name=${PLUGIN_NAME}"
                         echo "vendor-email=${VENDOR_EMAIL}"
                         echo "download-url=${DOWNLOAD_URL}"
                     } >> "${GITHUB_OUTPUT}"
 
-                    echo "触发类型=${EVENT_NAME}, 需要发布=${VERSION_CHANGED}, 目标版本=${RELEASE_VERSION}"
+                    echo "诊断：触发类型=${EVENT_NAME}，EVENT_BEFORE=${EVENT_BEFORE:-（空）}，目标版本=${RELEASE_VERSION}，发布策略=始终发布（同版本覆盖）"
 
-            # 仅在确实需要发布时才准备 JDK 与缓存：version 未变化的 push 直接跳过，
-            # 避免无谓的缓存恢复/保存开销。后续所有发布步骤都带同一 if 条件，跳过安全。
+            # 新规：workflow 一旦触发，以下步骤全部无条件执行，不存在"版本未变就跳过"的分支。
+            # 同版本再次发布由 release-action 的 allowUpdates + replacesArtifacts 覆盖已有 Release / asset。
             -   name: "设置 JDK21"
-                if: steps.resolve.outputs.version-changed == 'true'
                 uses: actions/setup-java@v6
                 with:
                     distribution: 'temurin'
@@ -97,7 +107,6 @@ jobs:
             # CI 每次全新下载。它与 setup-java 的 ~/.gradle/caches 完全不重叠，单独缓存
             # 可加速 buildPlugin，同时消除了原先两处缓存都指向 ~/.gradle/caches 的重复恢复/保存。
             -   name: "缓存 IntelliJ Platform 元数据"
-                if: steps.resolve.outputs.version-changed == 'true'
                 uses: actions/cache@v6
                 with:
                     path: |
@@ -111,16 +120,16 @@ jobs:
                         ${{ runner.os }}-ijp-
 
             -   name: "清理 Git Tag"
-                if: steps.resolve.outputs.version-changed == 'true'
                 env:
                     RELEASE_VERSION: ${{ steps.resolve.outputs.release-version }}
                 run: |
                     set -euo pipefail
 
-                    # 目标 tag 已存在则先删（本地 + 远端），确保 release-action 能重新创建
+                    # 目标 tag 已存在则先删（本地 + 远端），保持原有清理语义；
+                    # 覆盖 Release 不依赖该 git tag：release-action 按 Release 的 tag_name 查找已有对象
                     TARGET_TAG="v${RELEASE_VERSION}"
                     if [[ -n "$(git tag --list "${TARGET_TAG}")" ]]; then
-                        echo "标签 ${TARGET_TAG} 已存在，删除后重建..."
+                        echo "标签 ${TARGET_TAG} 已存在，删除后由发布步骤按 Release tag_name 覆盖..."
                         git tag -d "${TARGET_TAG}"
                         git push origin --delete "${TARGET_TAG}" || echo "远端无 ${TARGET_TAG}，跳过"
                     fi
@@ -137,7 +146,6 @@ jobs:
                     fi
 
             -   name: "构建插件"
-                if: steps.resolve.outputs.version-changed == 'true'
                 env:
                     PLUGIN_NAME: ${{ steps.resolve.outputs.plugin-name }}
                     RELEASE_VERSION: ${{ steps.resolve.outputs.release-version }}
@@ -163,7 +171,6 @@ jobs:
                     echo "构建产物已确认：${EXPECTED_ZIP}"
 
             -   name: "版本变更"
-                if: steps.resolve.outputs.version-changed == 'true'
                 env:
                     DOWNLOAD_URL: ${{ steps.resolve.outputs.download-url }}
                 run: |
@@ -173,7 +180,6 @@ jobs:
 
             # 只提交 release 元数据文件，避免 git add . 误提交构建产物等非预期文件
             -   name: "提交版本变更"
-                if: steps.resolve.outputs.version-changed == 'true'
                 env:
                     RELEASE_VERSION: ${{ steps.resolve.outputs.release-version }}
                     VENDOR_EMAIL: ${{ steps.resolve.outputs.vendor-email }}
@@ -190,7 +196,6 @@ jobs:
                     fi
 
             -   name: "发布版本"
-                if: steps.resolve.outputs.version-changed == 'true'
                 uses: ncipollo/release-action@v1.21.0
                 with:
                     tag: "v${{ steps.resolve.outputs.release-version }}"
@@ -200,13 +205,18 @@ jobs:
 
                         **下载插件包**：[${{ steps.resolve.outputs.plugin-name }}-${{ steps.resolve.outputs.release-version }}.zip](${{ steps.resolve.outputs.download-url }})
                     artifacts: build/distributions/${{ steps.resolve.outputs.plugin-name }}-${{ steps.resolve.outputs.release-version }}.zip
-                    # 上传/匹配出错即让 workflow 失败（注意：抛错发生在 release 创建之后，
+                    # 同版本覆盖：已存在同名 Release 时更新而不是报 422。
+                    # release-action 通过 releases.getReleaseByTag(tag_name) 查找已有 Release，
+                    # 与本地/远端 git tag 是否存在无关（前面的"清理 Git Tag"不会阻断覆盖路径）。
+                    allowUpdates: true
+                    # 更新时先按文件名删除同名旧 asset 再上传新包，避免同名 asset 冲突；默认 true，显式声明以防默认值变化。
+                    replacesArtifacts: true
+                    # 上传/匹配出错即让 workflow 失败（注意：抛错发生在 release 创建/更新之后，
                     # 防止空壳 release 主要靠构建步骤的 test -f 断言）
                     artifactErrorsFailBuild: true
                     prerelease: ${{ contains(steps.resolve.outputs.release-version, 'SNAPSHOT') }}
 
             -   name: "推送最终结果"
-                if: steps.resolve.outputs.version-changed == 'true'
                 run: |
                     set -euo pipefail
                     git push origin "${BRANCH_NAME}" || echo "没有需要推送的信息"

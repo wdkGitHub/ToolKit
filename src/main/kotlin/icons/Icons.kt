@@ -18,5 +18,8 @@ object Icons {
 
     @JvmField
     val SOURCETREE: Icon = getIcon("/icons/sourcetree.svg", Icons::class.java)
-    
+
+    /** 插件品牌图标：16×16 工具箱，深色主题由 IconLoader 自动切换到 toolkit_dark.svg */
+    @JvmField
+    val TOOLKIT: Icon = getIcon("/icons/toolkit.svg", Icons::class.java)
 }

@@ -1,11 +1,15 @@
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M32.0845 7.94025V4H24.0203V7.9896H16.029V4H7.91553V7.94025H4V36H16.0044V32.0045C16.0058 30.9457 16.4274 29.9308 17.1766 29.1826C17.9258 28.4345 18.9412 28.0143 20 28.0143C21.0588 28.0143 22.0743 28.4345 22.8234 29.1826C23.5726 29.9308 23.9942 30.9457 23.9956 32.0045V36H36V7.94025H32.0845Z"
-          fill="url(#paint0_linear)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
+    <!-- ToolKit logo: gradient tile + toolbox (light theme). 32x32 shape, 4px transparent padding. -->
     <defs>
-        <linearGradient id="paint0_linear" x1="2.94192" y1="4.89955" x2="37.7772" y2="39.7345" gradientUnits="userSpaceOnUse">
-            <stop offset="0.15937" stop-color="#3BEA62"/>
-            <stop offset="0.5404" stop-color="#3C99CC"/>
-            <stop offset="0.93739" stop-color="#6B57FF"/>
+        <linearGradient id="tk" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0.16" stop-color="#3BEA62"/>
+            <stop offset="0.54" stop-color="#3C99CC"/>
+            <stop offset="0.94" stop-color="#6B57FF"/>
         </linearGradient>
     </defs>
+    <rect x="4" y="4" width="32" height="32" rx="9" fill="url(#tk)"/>
+    <path d="M15.5 16.2v-1.9a4.5 4.5 0 0 1 9 0v1.9" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="10" y="16" width="20" height="14" rx="3" stroke="#FFFFFF" stroke-width="2.6"/>
+    <path d="M10.7 21.6h18.6" stroke="#FFFFFF" stroke-width="2.2"/>
+    <rect x="18" y="20.1" width="4" height="3.2" rx="1" fill="#FFFFFF"/>
 </svg>

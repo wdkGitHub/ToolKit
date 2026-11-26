@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
+    <!-- ToolKit logo: dark theme variant. Deeper gradient keeps the tile from glowing on dark UI. -->
+    <defs>
+        <linearGradient id="tk" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0.16" stop-color="#2BCB55"/>
+            <stop offset="0.54" stop-color="#2E83C4"/>
+            <stop offset="0.94" stop-color="#5B45E8"/>
+        </linearGradient>
+    </defs>
+    <rect x="4" y="4" width="32" height="32" rx="9" fill="url(#tk)"/>
+    <path d="M15.5 16.2v-1.9a4.5 4.5 0 0 1 9 0v1.9" stroke="#F2F5FF" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="10" y="16" width="20" height="14" rx="3" stroke="#F2F5FF" stroke-width="2.6"/>
+    <path d="M10.7 21.6h18.6" stroke="#F2F5FF" stroke-width="2.2"/>
+    <rect x="18" y="20.1" width="4" height="3.2" rx="1" fill="#F2F5FF"/>
+</svg>
