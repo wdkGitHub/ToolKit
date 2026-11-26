@@ -12,8 +12,10 @@
 
         <postStartupActivity implementation="wang.dekun.tool.kit.startup.Startup"/>
 
-        <!-- 设置 → 工具 → 外部应用打开方式：配置“后缀 → 外置应用” -->
-        <applicationConfigurable id="wang.dekun.tool.kit.externalApp" displayName="WK配置" parentId="tools" instance="wang.dekun.tool.kit.ui.ExternalAppConfigurable"/>
+        <!-- 设置 → 其他设置 → ToolKit Config：配置“后缀 → 外置应用”
+             不指定 parentId/groupId 时，平台把第三方 configurable 归入“其他设置”（与 Grep Console / Maven Helper 一致）；
+             parentId="other" 已被官方标记为 deprecated（Do not use），故采用默认归类。 -->
+        <applicationConfigurable id="wang.dekun.tool.kit.externalApp" displayName="ToolKit Config" instance="wang.dekun.tool.kit.ui.ExternalAppConfigurable"/>
     </extensions>
     <applicationListeners>
         <listener class="wang.dekun.tool.kit.listener.GlobalActionListener" topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
@@ -32,7 +34,7 @@
         <action id="blog.dekun.wang.git.open" class="wang.dekun.tool.kit.action.git.GitOpenAction" icon="AllIcons.General.Web">
             <add-to-group group-id="WelcomeScreenRecentProjectActionGroup" anchor="after" relative-to-action="blog.dekun.wang.sourcetree"/>
         </action>
-        <!--<editor-fold desc="Open With <配置的应用>（后缀映射见 设置 → 工具 → 外部应用打开方式）">-->
+        <!--<editor-fold desc="Open With <配置的应用>（后缀映射见 设置 → 其他设置 → ToolKit Config）">-->
         <action id="blog.dekun.wang.OpenWithApp" class="wang.dekun.tool.kit.action.OpenWithConfiguredAppAction" icon="AllIcons.Actions.MenuOpen">
             <add-to-group group-id="RunContextPopupGroup"/>
         </action>

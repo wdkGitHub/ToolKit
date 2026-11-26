@@ -1,6 +1,4 @@
 name: "打包发布版本"
-
-# 触发条件保持不变：master 上 gradle.properties 变更时推送，或手动触发
 on:
     push:
         branches:
@@ -33,7 +31,6 @@ jobs:
                     fetch-depth: 0
                     fetch-tags: true
 
-            # 统一解析：判断触发条件 + 一次性解析所有元数据，通过 outputs 供后续步骤使用
             -   name: "解析版本与元数据"
                 id: resolve
                 shell: bash
@@ -85,22 +82,34 @@ jobs:
 
                     echo "触发类型=${EVENT_NAME}, 需要发布=${VERSION_CHANGED}, 目标版本=${RELEASE_VERSION}"
 
+            # 仅在确实需要发布时才准备 JDK 与缓存：version 未变化的 push 直接跳过，
+            # 避免无谓的缓存恢复/保存开销。后续所有发布步骤都带同一 if 条件，跳过安全。
             -   name: "设置 JDK21"
+                if: steps.resolve.outputs.version-changed == 'true'
                 uses: actions/setup-java@v6
                 with:
                     distribution: 'temurin'
                     java-version: '21'
                     cache: 'gradle'
 
-            -   name: "缓存 Gradle 依赖"
+            # IntelliJ Platform 插件 2.x 把 IDE 元数据（Maven metadata、productReleases、
+            # IDE layout index）写入项目根 .intellijPlatform/，该目录被 .gitignore 排除，
+            # CI 每次全新下载。它与 setup-java 的 ~/.gradle/caches 完全不重叠，单独缓存
+            # 可加速 buildPlugin，同时消除了原先两处缓存都指向 ~/.gradle/caches 的重复恢复/保存。
+            -   name: "缓存 IntelliJ Platform 元数据"
+                if: steps.resolve.outputs.version-changed == 'true'
                 uses: actions/cache@v6
                 with:
-                    path: ~/.gradle/caches
-                    key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+                    path: |
+                        .intellijPlatform/ides
+                        .intellijPlatform/localPlatformArtifacts
+                        .intellijPlatform/productReleases
+                        .intellijPlatform/*.xml
+                        .intellijPlatform/*.etag
+                    key: ${{ runner.os }}-ijp-${{ hashFiles('build.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
                     restore-keys: |
-                        ${{ runner.os }}-gradle-
+                        ${{ runner.os }}-ijp-
 
-            # 清理可能冲突的正式版 tag，以及历史遗留的 SNAPSHOT 预览 tag
             -   name: "清理 Git Tag"
                 if: steps.resolve.outputs.version-changed == 'true'
                 env:
@@ -139,7 +148,9 @@ jobs:
 
                     # buildPlugin 已在 build.gradle.kts 中把归档版本绑定为 plugin.version，
                     # 产物形如 ToolKit-2.0.0.zip，与 download-url / artifacts 严格一致。
-                    ./gradlew buildPlugin --info --stacktrace
+                    # 去掉 --info：成功构建无需海量日志，减少 I/O 与日志体积；
+                    # 保留 --stacktrace，失败时仍输出完整堆栈，排障能力不丢失。
+                    ./gradlew buildPlugin --stacktrace
 
                     # 断言产物确实存在，避免 artifacts glob 匹配不到时 release-action 静默跳过上传
                     EXPECTED_ZIP="build/distributions/${PLUGIN_NAME}-${RELEASE_VERSION}.zip"
@@ -151,7 +162,6 @@ jobs:
                     fi
                     echo "构建产物已确认：${EXPECTED_ZIP}"
 
-            # 将本次 release 的真实下载地址写回 updatePlugins.xml
             -   name: "版本变更"
                 if: steps.resolve.outputs.version-changed == 'true'
                 env:
