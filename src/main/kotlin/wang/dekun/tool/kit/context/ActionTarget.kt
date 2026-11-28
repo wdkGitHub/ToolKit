@@ -12,7 +12,7 @@ import wang.dekun.tool.kit.app.OpenMode
  * @param dirPath              目录路径：选中目录本身，或选中文件所在目录；需要仓库根时会被修正为仓库根
  * @param filePath             选中的具体文件路径（选中目录时为 null）
  * @param repoRoot             所属 git 仓库根目录，不在仓库内时为 null
- * @param remoteUrl            仓库远程地址（已转换成浏览器可访问的 https 形式）
+ * @param remoteUrl            仓库远程地址（已转换成浏览器可访问形式，默认 https；命中域名/IP 规则时按配置的协议与端口生成）
  * @param preferRepositoryRoot 是否应当把 [dirPath] 修正为仓库根（变更窗口 / Git Log 场景）
  *
  * @author WangDeKun

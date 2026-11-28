@@ -21,6 +21,10 @@ import java.util.concurrent.ConcurrentHashMap
  * <p>由于 `update()` 会被右键菜单与工具栏频繁调用，解析结果按路径缓存：
  * 命中一律返回缓存，正/负结果使用不同 TTL，避免新增仓库后长期看不到菜单项。
  *
+ * <p>这里只产出**原始** remote 地址，浏览器地址由 [GitRemoteUrlResolver] 负责转换
+ * （未配置规则走原有 https 逻辑，命中域名/IP 规则时替换协议与 Web 端口）。
+ * URL 转换不进缓存，因此设置页改完规则可以立即生效。
+ *
  * @author WangDeKun
  * <p>
  * Email :  wangdekunemail@gmail.com
@@ -49,9 +53,6 @@ object GitRepositoryLocator {
     private class CacheEntry(val info: Info, val expireAt: Long)
 
     private val cache = ConcurrentHashMap<String, CacheEntry>()
-
-    /** scp 形式的远程地址：`user@host:path`，host 部分不允许出现 `/` 与 `:`（即不支持端口） */
-    private val SCP_LIKE = Regex("""^[^/@\s]+@[^/:\s]+:.+$""")
 
     /**
      * 一次解析结果。
@@ -102,64 +103,7 @@ object GitRepositoryLocator {
         cache.clear()
     }
 
-    /**
-     * 把 git 远程地址转换成浏览器可访问的 https 地址。
-     *
-     * <p>只转换真正指向远程主机的地址形式：
-     * <ul>
-     *     <li>`http(s)://` / `ftp(s)://`：原样使用；</li>
-     *     <li>`git@host:owner/repo.git`（scp 形式）：转成 `https://host/owner/repo`；</li>
-     *     <li>`ssh://[user@]host[:port]/owner/repo.git`：转成 `https://host/owner/repo`，
-     *         **端口必须丢弃** —— ssh 端口（如 2222 / 22）与 https 端口无关，
-     *         保留会得到 `https://host:2222/...` 这种打不开的地址；</li>
-     *     <li>`git://host/owner/repo.git`：转成 `https://host/owner/repo`。</li>
-     * </ul>
-     *
-     * <p>本地路径形式的远程（`/Users/x/repo.git`、`file:///...`、`~/code/repo.git`）、
-     * ssh config 别名（`my-alias:owner/repo.git`）以及任何无法识别的形式一律返回 null，
-     * 由 [ActionTarget.accepts] 隐藏“浏览器打开”动作 —— 不能把本地路径塞给浏览器。
-     *
-     * @return 转换后的地址；入参为空或不可浏览时返回 null
-     */
-    fun toBrowserUrl(rawUrl: String?): String? {
-        val url = rawUrl?.trim().orEmpty()
-        if (url.isEmpty()) {
-            return null
-        }
-        val httpsUrl = when {
-            url.startsWith("http://", ignoreCase = true) ||
-                url.startsWith("https://", ignoreCase = true) ||
-                url.startsWith("ftp://", ignoreCase = true) ||
-                url.startsWith("ftps://", ignoreCase = true) -> url
-            // [user@]host[:port]/owner/repo.git -> host/owner/repo.git
-            url.startsWith("ssh://", ignoreCase = true) -> "https://" + stripPort(dropUser(url.substring(6)))
-            // git://host[:port]/owner/repo.git -> host/owner/repo.git
-            url.startsWith("git://", ignoreCase = true) -> "https://" + stripPort(url.substring(6))
-            // git@host:owner/repo.git -> host/owner/repo.git
-            SCP_LIKE.matches(url) -> "https://" + url.substringAfter('@').replaceFirst(':', '/')
-            // 本地路径 / file:// / ssh 别名 / 无法识别：不是可浏览的远程地址
-            else -> return null
-        }
-        // 去掉结尾的 `/` 与 `.git`，保证同一个仓库得到同一个地址（便于去重）
-        return httpsUrl.trimEnd('/').removeSuffix(".git")
-    }
-
-    /** 去掉 `user@` 前缀：`git@host:2222/a/b.git` -> `host:2222/a/b.git` */
-    private fun dropUser(authorityAndPath: String): String =
-        authorityAndPath.substringAfter('@', authorityAndPath)
-
-    /** 丢弃 `host[:port]/path` 中的端口，保留 IPv6 的 `[...]` 形式 */
-    private fun stripPort(hostAndPath: String): String {
-        val slash = hostAndPath.indexOf('/')
-        val authority = if (slash < 0) hostAndPath else hostAndPath.substring(0, slash)
-        val rest = if (slash < 0) "" else hostAndPath.substring(slash)
-        val host = when {
-            authority.startsWith("[") -> authority.substringBefore(']') + "]"
-            else -> authority.substringBefore(':')
-        }
-        return host + rest
-    }
-
+    /** 纯文件系统定位：找仓库根 + 读 `.git/config` 里的**原始** remote 地址 */
     private fun locateByFileSystem(path: String): Info {
         val root = findRepositoryRoot(path) ?: return Info.EMPTY
         return Info(root, readRemoteUrl(root))

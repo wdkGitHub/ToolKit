@@ -48,7 +48,7 @@ class OpenWithConfiguredAppAction : AnAction("Open With", "用设置里为该后
         presentation.isVisible = true
         presentation.isEnabled = usableApps.isNotEmpty()
         presentation.description = if (usableApps.isEmpty()) {
-            "配置的应用不存在，请到 设置 → 其他设置 → ToolKit Config 检查"
+            "配置的应用不存在，请到 设置 → 其他设置 → ToolKit → ToolKit Config 检查"
         } else {
             "用配置的外置应用打开选中的文件"
         }
@@ -61,7 +61,7 @@ class OpenWithConfiguredAppAction : AnAction("Open With", "用设置里为该后
             Utils.showNotificationAnActionId(
                 project,
                 "ToolKit",
-                "没有可用的外置应用，请到 设置 → 其他设置 → ToolKit Config 配置",
+                "没有可用的外置应用，请到 设置 → 其他设置 → ToolKit → ToolKit Config 配置",
             )
             return
         }

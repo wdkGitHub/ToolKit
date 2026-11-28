@@ -102,7 +102,7 @@ object AppLauncher {
         // 浏览器只打开去重后的第一个远程地址，避免弹出多个标签页
         val paths = targets.mapNotNull { it.dedupeKey(app) }.distinct()
         val effectivePaths = if (app.openMode == OpenMode.URL) paths.take(1) else paths
-        val failedPaths = effectivePaths.filterNot { open(app, it) }
+        val failedPaths = effectivePaths.filterNot { open(project, app, it) }
         if (failedPaths.isNotEmpty()) {
             logger.warn("外部应用启动失败：${app.name} paths=$failedPaths")
             notifyFailure(project, "启动 ${app.text} 失败，请确认应用已安装：${failedPaths.first()}")
@@ -114,8 +114,12 @@ object AppLauncher {
      *
      * @return 是否成功
      */
-    private fun open(app: ExternalApp, path: String): Boolean {
+    private fun open(project: Project?, app: ExternalApp, path: String): Boolean {
         if (app.openMode == OpenMode.URL) {
+            // 把插件实际生成的地址显示出来：浏览器可能因 HSTS / HTTPS-First 把 http 再次升级成 https，
+            // 有了这条反馈就能直接区分「规则没命中」和「浏览器自己升级了协议」。
+            logger.info("Git 远程仓库最终打开地址：$path")
+            Utils.showNotificationAnActionId(project, NOTIFICATION_TITLE, "打开远程地址：$path")
             return runCatching { BrowserUtil.browse(path) }
                 .onFailure { logger.warn("浏览器打开失败：$path", it) }
                 .isSuccess

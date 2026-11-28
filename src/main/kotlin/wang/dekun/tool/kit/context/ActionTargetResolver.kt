@@ -7,7 +7,9 @@ import com.intellij.openapi.vcs.VcsDataKeys
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.vcs.log.VcsLogDataKeys
+import wang.dekun.tool.kit.repo.GitRemoteUrlResolver
 import wang.dekun.tool.kit.repo.GitRepositoryLocator
+import wang.dekun.tool.kit.settings.GitRemoteSettings
 import java.io.File
 
 
@@ -64,6 +66,8 @@ object ActionTargetResolver {
      * 为原始目标补齐仓库根与远程地址，并按 [ActionTarget.preferRepositoryRoot] 修正目录路径。
      *
      * <p>仓库信息来自 [GitRepositoryLocator]（纯文件系统 + 缓存），不做 git 子进程调用。
+     * 远程地址由 [GitRemoteUrlResolver] 转换：按 host 命中「域名 / IP」规则时替换协议与 Web 端口，
+     * 未配置规则时保持原有逻辑。URL 转换不在 `locate()` 的缓存里，设置页改动可立即生效。
      */
     fun enrich(rawTargets: List<ActionTarget>): List<ActionTarget> {
         if (rawTargets.isEmpty()) {
@@ -72,10 +76,12 @@ object ActionTargetResolver {
         return rawTargets
             .map { raw ->
                 val info = GitRepositoryLocator.locate(raw.filePath ?: raw.dirPath)
+                val parsed = GitRemoteUrlResolver.parse(info.remoteUrl)
+                val rule = parsed?.let { GitRemoteSettings.getInstance().ruleFor(it.host) }
                 raw.copy(
                     dirPath = if (raw.preferRepositoryRoot) info.root ?: raw.dirPath else raw.dirPath,
                     repoRoot = info.root,
-                    remoteUrl = GitRepositoryLocator.toBrowserUrl(info.remoteUrl),
+                    remoteUrl = GitRemoteUrlResolver.toBrowserUrl(parsed, rule),
                 )
             }
             .distinctBy { "${it.dirPath}|${it.filePath}|${it.remoteUrl}" }
